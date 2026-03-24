@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { getPool } from '@/lib/api';
 import HeartbeatGrid from '@/components/pools/HeartbeatGrid';
 import SharedContext from '@/components/pools/SharedContext';
+import WorkChatPanel from '@/components/pools/WorkChatPanel';
 import type { PoolDetail } from '@/lib/types';
 
 interface Props {
@@ -20,24 +21,24 @@ export default function PoolDetailPage({ params }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function load() {
-    setError(null);
-    try {
-      const data = await getPool(id);
-      setPool(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { load(); }, [id]);
-
-  // Poll every 5 seconds
   useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setError(null);
+      try {
+        const data = await getPool(id);
+        if (!cancelled) setPool(data);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
     const interval = setInterval(load, 5_000);
-    return () => clearInterval(interval);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [id]);
 
   return (
@@ -64,7 +65,7 @@ export default function PoolDetailPage({ params }: Props) {
       {error && (
         <div className="p-6 text-red-400 font-mono text-xs">
           Error: {error}
-          <button onClick={load} className="ml-3 underline">retry</button>
+          <button onClick={() => window.location.reload()} className="ml-3 underline">retry</button>
         </div>
       )}
 
@@ -77,6 +78,16 @@ export default function PoolDetailPage({ params }: Props) {
             </h2>
             <div className="border border-zinc-800 rounded overflow-hidden">
               <HeartbeatGrid heartbeats={pool.heartbeats} />
+            </div>
+          </section>
+
+          {/* WorkChat */}
+          <section>
+            <h2 className="font-mono text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
+              WorkChat
+            </h2>
+            <div className="border border-zinc-800 rounded overflow-hidden h-64">
+              <WorkChatPanel poolId={id} />
             </div>
           </section>
 

@@ -1,0 +1,4 @@
+Hello from the Write tool!
+This file was created to showcase the Write tool.
+Line 3: Writing is fun.
+Line 4: ✅ This line was successfully changed by the Edit tool!

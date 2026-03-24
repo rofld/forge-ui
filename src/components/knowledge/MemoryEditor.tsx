@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { updateMemory } from '@/lib/api';
 import type { Memory } from '@/lib/types';
 
@@ -8,6 +8,27 @@ interface MemoryEditorProps {
   threadId: string;
   memories: Memory[];
   onUpdate?: (name: string, content: string) => void;
+}
+
+function AutoTextarea({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = 'auto';
+      ref.current.style.height = Math.max(120, Math.min(ref.current.scrollHeight, 500)) + 'px';
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-xs font-mono text-zinc-200 resize-none overflow-y-auto focus:outline-none focus:border-zinc-500"
+      style={{ minHeight: 120, maxHeight: 500 }}
+    />
+  );
 }
 
 export default function MemoryEditor({ threadId, memories, onUpdate }: MemoryEditorProps) {
@@ -70,7 +91,7 @@ export default function MemoryEditor({ threadId, memories, onUpdate }: MemoryEdi
                   disabled={saving}
                   className="text-xs font-mono text-emerald-500 hover:text-emerald-300 disabled:opacity-50"
                 >
-                  {saving ? 'saving…' : 'save'}
+                  {saving ? 'saving...' : 'save'}
                 </button>
               </div>
             ) : (
@@ -84,12 +105,7 @@ export default function MemoryEditor({ threadId, memories, onUpdate }: MemoryEdi
           </div>
 
           {editing === m.name ? (
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={6}
-              className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs font-mono text-zinc-200 resize-y focus:outline-none focus:border-zinc-500"
-            />
+            <AutoTextarea value={draft} onChange={setDraft} />
           ) : (
             <p className="text-xs font-mono text-zinc-300 whitespace-pre-wrap">{m.content}</p>
           )}

@@ -16,6 +16,10 @@ const PRICING: Record<string, { input: number; output: number; cacheRead: number
   'claude-haiku-4-5':      { input: 0.8 / 1e6,  output: 4 / 1e6,   cacheRead: 0.08 / 1e6 },
   'gpt-4o':                { input: 5 / 1e6,    output: 15 / 1e6,  cacheRead: 2.5 / 1e6 },
   'gpt-4o-mini':           { input: 0.15 / 1e6, output: 0.6 / 1e6, cacheRead: 0.075 / 1e6 },
+  'glm-5':                 { input: 1 / 1e6,    output: 3.2 / 1e6, cacheRead: 0.2 / 1e6 },
+  'glm-5-turbo':           { input: 0.5 / 1e6,  output: 1.6 / 1e6, cacheRead: 0.1 / 1e6 },
+  'glm-4.7':               { input: 0.6 / 1e6,  output: 2.2 / 1e6, cacheRead: 0.11 / 1e6 },
+  'glm-4.7-flash':         { input: 0.07 / 1e6, output: 0.4 / 1e6, cacheRead: 0.01 / 1e6 },
 };
 
 /** Estimate cost in USD given model name and token counts. */
@@ -44,6 +48,8 @@ export function formatCost(usd: number): string {
 
 /** Shorten a model id to a compact display name: "claude-opus-4-6" → "opus-4.6" */
 export function shortModel(model: string): string {
+  // Strip provider prefix for display
+  if (model.startsWith('zai/')) return model.slice(4).toUpperCase();
   return model
     .replace('claude-', '')
     .replace(/-(\d+)-(\d+)$/, '-$1.$2')   // "4-6" → "4.6"

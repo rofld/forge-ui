@@ -1,10 +1,14 @@
 import type { Metadata } from 'next';
-import { JetBrains_Mono, Geist } from 'next/font/google';
+import { Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import Sidebar from '@/components/ui/Sidebar';
-import { cn } from "@/lib/utils";
+import SidebarWrapper from '@/components/ui/SidebarWrapper';
+import LayoutShell from '@/components/ui/LayoutShell';
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
 
 const jetbrains = JetBrains_Mono({
   subsets: ['latin'],
@@ -23,12 +27,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("h-full", jetbrains.variable, "font-sans", geist.variable)}>
-      <body className="h-full bg-zinc-950 text-zinc-100 flex antialiased font-mono">
-        <Sidebar />
-        <main className="flex-1 min-h-screen overflow-hidden flex flex-col">
+    <html lang="en" className={`dark h-full ${spaceGrotesk.variable} ${jetbrains.variable}`} data-theme="ember-dark" data-color="ember" suppressHydrationWarning>
+      <body className="h-full bg-background text-foreground flex antialiased font-sans">
+        <LayoutShell sidebar={<SidebarWrapper />}>
           {children}
-        </main>
+        </LayoutShell>
       </body>
     </html>
   );
