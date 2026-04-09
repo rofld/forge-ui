@@ -13,11 +13,49 @@ import type { WBNode } from '@/components/whiteboard/types';
 const API_BASE =
   process.env.NEXT_PUBLIC_FORGE_API || 'http://localhost:3142';
 
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('forge_token');
+}
+
+export function setAuthToken(token: string) {
+  localStorage.setItem('forge_token', token);
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem('forge_token');
+}
+
+export function isAuthenticated(): boolean {
+  return !!getAuthToken();
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...authHeaders(),
+  };
+  // Merge with caller headers (caller wins)
+  if (init?.headers) {
+    Object.assign(headers, init.headers);
+  }
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
+    headers,
   });
+  if (res.status === 401) {
+    // Clear stale token and redirect to login
+    clearAuthToken();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+    throw new Error('unauthorized');
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => res.statusText);
     throw new Error(`${res.status} ${body}`);
@@ -81,6 +119,7 @@ export async function uploadSharedContext(threadId: string, file: File): Promise
   form.append('file', file);
   const res = await fetch(`${API_BASE}/threads/${threadId}/shared`, {
     method: 'POST',
+    headers: authHeaders(),
     body: form,
   });
   if (!res.ok) {
@@ -140,7 +179,7 @@ export function postMessage(
   else if (thinkingBudget && thinkingBudget > 0) body.thinking_budget = thinkingBudget;
   return fetch(`${API_BASE}/threads/${threadId}/messages`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
 }
@@ -184,7 +223,63 @@ export async function getThreadWorkChat(threadId: string, limit = 50): Promise<{
 }
 
 export function poolWorkChatSSE(poolId: string): EventSource {
-  return new EventSource(`${API_BASE}/pools/${poolId}/workchat/stream`);
+  const token = getAuthToken();
+  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+  return new EventSource(`${API_BASE}/pools/${poolId}/workchat/stream${tokenParam}`);
+}
+
+// ── Agents (Claw) ────────────────────────────────────────────────────
+
+export interface AgentRecord {
+  id: string;
+  name: string;
+  owner: string;
+  model: string;
+  persona: string | null;
+  container_id: string | null;
+  status: string;
+  working_dir: string;
+  created_at: string | null;
+}
+
+export interface AgentStats {
+  total_sessions: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cache_read_tokens: number;
+  total_cost_usd: number;
+}
+
+export interface CreateAgentRequest {
+  name: string;
+  owner: string;
+  model?: string;
+  persona?: string;
+  working_dir?: string;
+}
+
+export async function listAgents(owner?: string): Promise<AgentRecord[]> {
+  const query = owner ? `?owner=${encodeURIComponent(owner)}` : '';
+  return apiFetch<AgentRecord[]>(`/agents${query}`);
+}
+
+export async function getAgent(id: string): Promise<AgentRecord> {
+  return apiFetch<AgentRecord>(`/agents/${id}`);
+}
+
+export async function createAgent(req: CreateAgentRequest): Promise<AgentRecord> {
+  return apiFetch<AgentRecord>('/agents', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+}
+
+export async function deleteAgent(id: string): Promise<void> {
+  await apiFetch<void>(`/agents/${id}`, { method: 'DELETE' });
+}
+
+export async function getAgentStats(id: string): Promise<AgentStats> {
+  return apiFetch<AgentStats>(`/agents/${id}/stats`);
 }
 
 // ── Steering ──────────────────────────────────────────────────────────

@@ -6,7 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import ShardIcon from '@/components/ui/ShardIcon';
 import InfinityIcon from '@/components/ui/InfinityIcon';
 import ThemePicker from '@/components/ui/ThemePicker';
-import { listThreads, listPools, deleteThread, createThread, renameThread } from '@/lib/api';
+import { listThreads, listPools, listAgents, deleteThread, createThread, renameThread, clearAuthToken } from '@/lib/api';
+import type { AgentRecord } from '@/lib/api';
 import { isSessionActive } from '@/lib/sse-manager';
 import { shortModel } from '@/lib/format';
 import type { ThreadInfo, PoolInfo } from '@/lib/types';
@@ -35,6 +36,8 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   const [poolsOpen, setPoolsOpen] = useLocalStorage('sidebar-pools', false);
   const [threads, setThreads] = useState<ThreadInfo[]>([]);
   const [pools, setPools] = useState<PoolInfo[]>([]);
+  const [agents, setAgents] = useState<AgentRecord[]>([]);
+  const [agentsOpen, setAgentsOpen] = useLocalStorage('sidebar-agents', true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [creating, setCreating] = useState(false);
@@ -73,6 +76,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
       .then((ts) => setThreads(ts.filter((t) => t.id !== '__global__')))
       .catch(() => {});
     listPools().then(setPools).catch(() => {});
+    listAgents().then(setAgents).catch(() => {});
   }, []);
 
   // Poll for active sessions to show running indicator
@@ -232,6 +236,51 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
         )}
       </div>
 
+      {/* Agents */}
+      <div className="pt-1">
+        <div className="flex items-center justify-between px-4 py-1.5">
+          <button
+            onClick={() => setAgentsOpen(!agentsOpen)}
+            className="flex items-center gap-1 text-[12px] text-stone-500 hover:text-stone-300 transition-colors uppercase tracking-widest font-medium"
+          >
+            <span>Agents</span>
+            <span className="text-[9px] opacity-60">{agentsOpen ? '▾' : '▸'}</span>
+          </button>
+          <Link
+            href="/agents"
+            className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/[0.06] text-stone-600 hover:text-amber-400 transition-colors text-sm leading-none"
+            title="Manage agents"
+          >
+            ⚙
+          </Link>
+        </div>
+        {agentsOpen && (
+          <div className="px-2 pb-1 space-y-px max-h-48 overflow-y-auto animate-expand">
+            {agents.map((a) => {
+              const active = pathname === `/agents`;
+              const statusColor = a.status === 'running' ? 'text-green-400' : 'text-stone-600';
+              return (
+                <div
+                  key={a.id}
+                  className={`flex items-center px-3 py-1.5 text-[13px] rounded-lg transition-all ${
+                    active
+                      ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
+                      : 'text-stone-500 hover:text-stone-300 hover:bg-white/[0.04] border border-transparent'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${a.status === 'running' ? 'bg-green-400' : a.status === 'pending' ? 'bg-amber-400' : 'bg-stone-600'} mr-2 shrink-0`} />
+                  <span className="truncate flex-1 mr-2">{a.name}</span>
+                  <span className="text-[10px] opacity-40 shrink-0 font-mono">{a.model}</span>
+                </div>
+              );
+            })}
+            {agents.length === 0 && (
+              <div className="px-3 py-1.5 text-[12px] text-stone-600">No agents</div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Pools */}
       <div className="pt-1">
         <button
@@ -277,10 +326,17 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
         <ThemePicker />
       </div>
 
-      <div className="px-4 py-2">
+      <div className="px-4 py-2 flex items-center justify-between">
         <span className="text-stone-600 text-[10px] tracking-wide uppercase font-mono">
           api :3142
         </span>
+        <button
+          onClick={() => { clearAuthToken(); window.location.href = '/login'; }}
+          className="text-stone-600 hover:text-red-400 text-[10px] uppercase tracking-wide font-mono transition-colors"
+          title="Sign out"
+        >
+          logout
+        </button>
       </div>
     </aside>
   );

@@ -1,8 +1,10 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { CanvasProvider, useCanvas } from '@/lib/canvas-context';
 import { ThemeProvider } from '@/lib/theme-context';
+import { isAuthenticated } from '@/lib/api';
 import Canvas from '@/components/canvas/Canvas';
 
 interface LayoutShellProps {
@@ -12,6 +14,27 @@ interface LayoutShellProps {
 
 function LayoutInner({ sidebar, children }: LayoutShellProps) {
   const { error } = useCanvas();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
+
+  const isLoginPage = pathname === '/login';
+
+  useEffect(() => {
+    // Redirect to login if no token (skip on login page itself)
+    if (!isLoginPage && !isAuthenticated()) {
+      router.push('/login');
+    } else {
+      setReady(true);
+    }
+  }, [pathname, isLoginPage, router]);
+
+  // Login page: full screen, no sidebar
+  if (isLoginPage) {
+    return <main className="flex-1 min-h-screen">{children}</main>;
+  }
+
+  if (!ready) return null;
 
   return (
     <>
