@@ -172,11 +172,13 @@ export function postMessage(
   model?: string,
   thinkingBudget?: number,
   effort?: string,
+  agentId?: string,
 ): Promise<Response> {
   const body: Record<string, unknown> = { content };
   if (model) body.model = model;
   if (effort) body.effort = effort;
   else if (thinkingBudget && thinkingBudget > 0) body.thinking_budget = thinkingBudget;
+  if (agentId) body.agent_id = agentId;
   return fetch(`${API_BASE}/threads/${threadId}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
@@ -280,6 +282,17 @@ export async function deleteAgent(id: string): Promise<void> {
 
 export async function getAgentStats(id: string): Promise<AgentStats> {
   return apiFetch<AgentStats>(`/agents/${id}/stats`);
+}
+
+export async function getAgentThreads(id: string): Promise<string[]> {
+  return apiFetch<string[]>(`/agents/${id}/threads`);
+}
+
+export async function linkAgentThread(agentId: string, threadId: string): Promise<void> {
+  await apiFetch(`/agents/${agentId}/threads`, {
+    method: 'POST',
+    body: JSON.stringify({ thread_id: threadId }),
+  });
 }
 
 // ── Steering ──────────────────────────────────────────────────────────

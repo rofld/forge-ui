@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { listAgents, createAgent, deleteAgent, getAgentStats } from '@/lib/api';
 import type { AgentRecord, AgentStats } from '@/lib/api';
 
@@ -15,13 +16,14 @@ function StatusDot({ status }: { status: string }) {
   return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
 }
 
-function AgentCard({ agent, stats, onDelete }: {
+function AgentCard({ agent, stats, onDelete, onClick }: {
   agent: AgentRecord;
   stats?: AgentStats;
   onDelete: () => void;
+  onClick: () => void;
 }) {
   return (
-    <div className="glass border border-white/[0.06] rounded-xl p-5 space-y-3 hover:border-white/[0.1] transition-colors">
+    <div onClick={onClick} className="glass border border-white/[0.06] rounded-xl p-5 space-y-3 hover:border-amber-500/20 transition-colors cursor-pointer">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <StatusDot status={agent.status} />
@@ -78,6 +80,7 @@ function AgentCard({ agent, stats, onDelete }: {
 }
 
 export default function AgentsPage() {
+  const router = useRouter();
   const [agents, setAgents] = useState<AgentRecord[]>([]);
   const [stats, setStats] = useState<Record<string, AgentStats>>({});
   const [showCreate, setShowCreate] = useState(false);
@@ -199,6 +202,7 @@ export default function AgentsPage() {
             agent={a}
             stats={stats[a.id]}
             onDelete={() => handleDelete(a.id)}
+            onClick={() => router.push(`/agents/${a.id}`)}
           />
         ))}
       </div>

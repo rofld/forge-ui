@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, use } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { getThread, getMessages, uploadSharedContext, saveWhiteboardContext, steerThread } from '@/lib/api';
 import { shortModel, formatTokens, estimateCost, formatCost } from '@/lib/format';
 import { useSSE } from '@/lib/use-sse';
@@ -28,6 +29,8 @@ interface Props {
 
 export default function ThreadPage({ params }: Props) {
   const { id } = use(params);
+  const searchParams = useSearchParams();
+  const agentId = searchParams.get('agent') || undefined;
 
   const [thread, setThread] = useState<ThreadDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -179,7 +182,7 @@ export default function ThreadPage({ params }: Props) {
           </Link>
           <div className="w-px h-4 bg-white/[0.08]" />
           <ShardMenu
-            onAction={(prompt) => sendMessage(prompt, thread?.model)}
+            onAction={(prompt) => sendMessage(prompt, thread?.model, undefined, undefined, agentId)}
             disabled={isStreaming}
           />
           <FileExplorer />
@@ -305,7 +308,7 @@ export default function ThreadPage({ params }: Props) {
               )}
               {composerOpen && (
                 <Composer
-                  onSend={(content, model, thinkingBudget, effort) => sendMessage(content, model, thinkingBudget, effort)}
+                  onSend={(content, model, thinkingBudget, effort) => sendMessage(content, model, thinkingBudget, effort, agentId)}
                   disabled={isStreaming}
                   onClose={() => setComposerOpen(false)}
                   defaultModel={thread?.model ? thread.model.replace(/^claude-/, '').split('-')[0] : 'opus'}
@@ -315,7 +318,7 @@ export default function ThreadPage({ params }: Props) {
           ) : (
             <div className="max-w-3xl mx-auto w-full px-4">
               <ChatInput
-                onSend={(content, model, thinkingBudget, effort) => sendMessage(content, model, thinkingBudget, effort)}
+                onSend={(content, model, thinkingBudget, effort) => sendMessage(content, model, thinkingBudget, effort, agentId)}
                 disabled={isStreaming}
                 variant="glass"
                 defaultModel={thread?.model ? thread.model.replace(/^claude-/, '').split('-')[0] : 'opus'}

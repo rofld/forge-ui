@@ -257,11 +257,11 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
         {agentsOpen && (
           <div className="px-2 pb-1 space-y-px max-h-48 overflow-y-auto animate-expand">
             {agents.map((a) => {
-              const active = pathname === `/agents`;
-              const statusColor = a.status === 'running' ? 'text-green-400' : 'text-stone-600';
+              const active = pathname === `/agents/${a.id}`;
               return (
-                <div
+                <Link
                   key={a.id}
+                  href={`/agents/${a.id}`}
                   className={`flex items-center px-3 py-1.5 text-[13px] rounded-lg transition-all ${
                     active
                       ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
@@ -271,7 +271,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
                   <span className={`w-1.5 h-1.5 rounded-full ${a.status === 'running' ? 'bg-green-400' : a.status === 'pending' ? 'bg-amber-400' : 'bg-stone-600'} mr-2 shrink-0`} />
                   <span className="truncate flex-1 mr-2">{a.name}</span>
                   <span className="text-[10px] opacity-40 shrink-0 font-mono">{a.model}</span>
-                </div>
+                </Link>
               );
             })}
             {agents.length === 0 && (

@@ -22,7 +22,7 @@ export interface UseSSEReturn {
   lastToolCalls: ToolSegment[];
   tokenStats: TokenStats | null;
   error: string | null;
-  sendMessage: (content: string, model?: string, thinkingBudget?: number, effort?: string) => void;
+  sendMessage: (content: string, model?: string, thinkingBudget?: number, effort?: string, agentId?: string) => void;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
 }
 
@@ -75,7 +75,7 @@ export function useSSE(threadId: string, initialMessages: Message[] = []): UseSS
   }, [threadId, syncFromSession]);
 
   const sendMessage = useCallback(
-    (content: string, model?: string, thinkingBudget?: number, effort?: string) => {
+    (content: string, model?: string, thinkingBudget?: number, effort?: string, agentId?: string) => {
       setError(null);
       committedRef.current = false;
 
@@ -86,7 +86,7 @@ export function useSSE(threadId: string, initialMessages: Message[] = []): UseSS
       unsubRef.current?.();
 
       // Start session and subscribe IMMEDIATELY (before React re-renders)
-      const session = startSession(threadId, content, model, thinkingBudget, effort);
+      const session = startSession(threadId, content, model, thinkingBudget, effort, agentId);
       setIsStreaming(true);
       setSegments([...session.segments]);
 

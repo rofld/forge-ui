@@ -88,6 +88,7 @@ export function startSession(
   model?: string,
   thinkingBudget?: number,
   effort?: string,
+  agentId?: string,
 ): ActiveSession {
   // If there's already an active session, return it
   const existing = sessions.get(threadId);
@@ -106,7 +107,7 @@ export function startSession(
   sessions.set(threadId, session);
 
   // Run the SSE reader in the background (not tied to React)
-  runReader(session, content, model, thinkingBudget, effort);
+  runReader(session, content, model, thinkingBudget, effort, agentId);
 
   return session;
 }
@@ -117,11 +118,12 @@ async function runReader(
   model?: string,
   thinkingBudget?: number,
   effort?: string,
+  agentId?: string,
 ) {
   let accText = '';
 
   try {
-    const response = await postMessage(session.threadId, content, model, thinkingBudget, effort);
+    const response = await postMessage(session.threadId, content, model, thinkingBudget, effort, agentId);
 
     if (!response.ok) {
       session.error = `Server error: ${response.status}`;
