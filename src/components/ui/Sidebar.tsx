@@ -6,8 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import ShardIcon from '@/components/ui/ShardIcon';
 import InfinityIcon from '@/components/ui/InfinityIcon';
 import ThemePicker from '@/components/ui/ThemePicker';
-import { listThreads, listPools, listAgents, deleteThread, createThread, renameThread, clearAuthToken } from '@/lib/api';
-import type { AgentRecord } from '@/lib/api';
+import { listThreads, listPools, listAgents, listTasks, deleteThread, createThread, renameThread, clearAuthToken } from '@/lib/api';
+import type { AgentRecord, TaskRecord } from '@/lib/api';
 import { isSessionActive } from '@/lib/sse-manager';
 import { shortModel } from '@/lib/format';
 import type { ThreadInfo, PoolInfo } from '@/lib/types';
@@ -38,6 +38,8 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   const [pools, setPools] = useState<PoolInfo[]>([]);
   const [agents, setAgents] = useState<AgentRecord[]>([]);
   const [agentsOpen, setAgentsOpen] = useLocalStorage('sidebar-agents', true);
+  const [tasks, setTasks] = useState<TaskRecord[]>([]);
+  const [tasksOpen, setTasksOpen] = useLocalStorage('sidebar-tasks', true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [creating, setCreating] = useState(false);
@@ -77,6 +79,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
       .catch(() => {});
     listPools().then(setPools).catch(() => {});
     listAgents().then(setAgents).catch(() => {});
+    listTasks().then(setTasks).catch(() => {});
   }, []);
 
   // Poll for active sessions to show running indicator
@@ -276,6 +279,57 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
             })}
             {agents.length === 0 && (
               <div className="px-3 py-1.5 text-[12px] text-stone-600">No agents</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Tasks */}
+      <div className="pt-1">
+        <div className="flex items-center justify-between px-4 py-1.5">
+          <button
+            onClick={() => setTasksOpen(!tasksOpen)}
+            className="flex items-center gap-1 text-[12px] text-stone-500 hover:text-stone-300 transition-colors uppercase tracking-widest font-medium"
+          >
+            <span>Tasks</span>
+            {tasks.filter((t) => t.status === 'running').length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono">
+                {tasks.filter((t) => t.status === 'running').length}
+              </span>
+            )}
+            <span className="text-[9px] opacity-60">{tasksOpen ? '▾' : '▸'}</span>
+          </button>
+          <Link
+            href="/tasks"
+            className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/[0.06] text-stone-600 hover:text-amber-400 transition-colors text-sm leading-none"
+            title="All tasks"
+          >
+            +
+          </Link>
+        </div>
+        {tasksOpen && (
+          <div className="px-2 pb-1 space-y-px max-h-48 overflow-y-auto animate-expand">
+            {tasks.slice(0, 10).map((t) => (
+              <Link
+                key={t.id}
+                href={`/tasks/${t.id}`}
+                className={`flex items-center px-3 py-1.5 text-[13px] rounded-lg transition-all ${
+                  pathname === `/tasks/${t.id}`
+                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
+                    : 'text-stone-500 hover:text-stone-300 hover:bg-white/[0.04] border border-transparent'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  t.status === 'running' ? 'bg-amber-400 animate-pulse' :
+                  t.status === 'completed' ? 'bg-green-400' :
+                  t.status === 'failed' ? 'bg-red-400' : 'bg-stone-600'
+                } mr-2 shrink-0`} />
+                <span className="truncate flex-1 mr-2">{t.prompt.slice(0, 40)}</span>
+                <span className="text-[10px] opacity-40 shrink-0 font-mono">${t.cost_usd.toFixed(2)}</span>
+              </Link>
+            ))}
+            {tasks.length === 0 && (
+              <div className="px-3 py-1.5 text-[12px] text-stone-600">No tasks</div>
             )}
           </div>
         )}

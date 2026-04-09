@@ -295,6 +295,57 @@ export async function linkAgentThread(agentId: string, threadId: string): Promis
   });
 }
 
+// ── Tasks (Autonomous Fire-and-Forget) ───────────────────────────────
+
+export interface TaskRecord {
+  id: string;
+  agent_id: string | null;
+  prompt: string;
+  model: string;
+  persona: string | null;
+  done_marker: string;
+  max_iterations: number;
+  status: string; // pending, running, completed, failed
+  result: string | null;
+  error: string | null;
+  iterations_run: number;
+  input_tokens: number;
+  output_tokens: number;
+  cost_usd: number;
+  webhook_url: string | null;
+  thread_id: string | null;
+  working_dir: string;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
+export interface CreateTaskRequest {
+  prompt: string;
+  agent_id?: string;
+  model?: string;
+  persona?: string;
+  done_marker?: string;
+  max_iterations?: number;
+  working_dir?: string;
+  webhook_url?: string;
+}
+
+export async function listTasks(status?: string): Promise<TaskRecord[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : '';
+  return apiFetch<TaskRecord[]>(`/tasks${query}`);
+}
+
+export async function getTask(id: string): Promise<TaskRecord> {
+  return apiFetch<TaskRecord>(`/tasks/${id}`);
+}
+
+export async function createTask(req: CreateTaskRequest): Promise<TaskRecord> {
+  return apiFetch<TaskRecord>('/tasks', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+}
+
 // ── Steering ──────────────────────────────────────────────────────────
 
 export async function steerThread(threadId: string, content: string): Promise<void> {

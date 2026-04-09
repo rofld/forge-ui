@@ -66,13 +66,21 @@ export default function AgentDetailPage() {
             {agent.persona ? `Persona: ${agent.persona}` : 'No persona'} · Model: {agent.model} · Owner: {agent.owner}
           </p>
         </div>
-        <button
-          onClick={handleNewThread}
-          disabled={creating}
-          className="px-4 py-2 rounded-lg bg-amber-500/20 text-amber-300 text-sm font-medium hover:bg-amber-500/30 transition-colors border border-amber-500/20 disabled:opacity-50"
-        >
-          {creating ? 'Creating...' : '+ New Thread'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleNewThread}
+            disabled={creating}
+            className="px-4 py-2 rounded-lg bg-amber-500/20 text-amber-300 text-sm font-medium hover:bg-amber-500/30 transition-colors border border-amber-500/20 disabled:opacity-50"
+          >
+            {creating ? 'Creating...' : '+ New Thread'}
+          </button>
+          <button
+            onClick={() => router.push(`/tasks?agent=${agent.id}`)}
+            className="px-4 py-2 rounded-lg bg-white/[0.04] text-stone-300 text-sm font-medium hover:bg-white/[0.08] transition-colors border border-white/[0.08]"
+          >
+            Run Task
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
