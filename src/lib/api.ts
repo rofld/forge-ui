@@ -346,6 +346,16 @@ export async function createTask(req: CreateTaskRequest): Promise<TaskRecord> {
   });
 }
 
+export async function deleteTask(id: string): Promise<void> {
+  await apiFetch<void>(`/tasks/${id}`, { method: 'DELETE' });
+}
+
+export function taskStreamUrl(taskId: string): string {
+  const token = getAuthToken();
+  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+  return `${API_BASE}/tasks/${taskId}/stream${tokenParam}`;
+}
+
 // ── Steering ──────────────────────────────────────────────────────────
 
 export async function steerThread(threadId: string, content: string): Promise<void> {
