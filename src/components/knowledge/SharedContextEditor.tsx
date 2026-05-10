@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { updateSharedContext, deleteSharedContext } from '@/lib/api';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 interface SharedEntry {
   name: string;
@@ -46,6 +47,7 @@ export default function SharedContextEditor({
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   function startEdit(entry: SharedEntry) {
     setEditing(entry.name);
@@ -74,14 +76,17 @@ export default function SharedContextEditor({
     }
   }
 
-  async function handleDelete(name: string) {
-    if (!confirm(`Delete shared context "${name}"?`)) return;
+  async function doDelete(name: string) {
     try {
       await deleteSharedContext(threadId, name);
       onDelete?.(name);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+  }
+
+  function handleDelete(name: string) {
+    setConfirmDelete(name);
   }
 
   if (entries.length === 0) {
@@ -93,56 +98,67 @@ export default function SharedContextEditor({
   }
 
   return (
-    <div className="divide-y divide-zinc-800">
-      {entries.map((entry) => (
-        <div key={entry.name} className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-mono text-xs text-zinc-400 font-bold">{entry.name}</span>
+    <>
+      <div className="divide-y divide-zinc-800">
+        {entries.map((entry) => (
+          <div key={entry.name} className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-mono text-xs text-zinc-400 font-bold">{entry.name}</span>
+              {editing === entry.name ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={cancelEdit}
+                    className="text-xs font-mono text-zinc-500 hover:text-zinc-300"
+                  >
+                    cancel
+                  </button>
+                  <button
+                    onClick={saveEdit}
+                    disabled={saving}
+                    className="text-xs font-mono text-emerald-500 hover:text-emerald-300 disabled:opacity-50"
+                  >
+                    {saving ? 'saving...' : 'save'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startEdit(entry)}
+                    className="text-xs font-mono text-zinc-600 hover:text-zinc-400"
+                  >
+                    edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(entry.name)}
+                    className="text-xs font-mono text-zinc-600 hover:text-red-400"
+                  >
+                    delete
+                  </button>
+                </div>
+              )}
+            </div>
+
             {editing === entry.name ? (
-              <div className="flex gap-2">
-                <button
-                  onClick={cancelEdit}
-                  className="text-xs font-mono text-zinc-500 hover:text-zinc-300"
-                >
-                  cancel
-                </button>
-                <button
-                  onClick={saveEdit}
-                  disabled={saving}
-                  className="text-xs font-mono text-emerald-500 hover:text-emerald-300 disabled:opacity-50"
-                >
-                  {saving ? 'saving...' : 'save'}
-                </button>
-              </div>
+              <AutoTextarea value={draft} onChange={setDraft} />
             ) : (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => startEdit(entry)}
-                  className="text-xs font-mono text-zinc-600 hover:text-zinc-400"
-                >
-                  edit
-                </button>
-                <button
-                  onClick={() => handleDelete(entry.name)}
-                  className="text-xs font-mono text-zinc-600 hover:text-red-400"
-                >
-                  delete
-                </button>
-              </div>
+              <p className="text-xs font-mono text-zinc-300 whitespace-pre-wrap">{entry.content}</p>
+            )}
+
+            {editing === entry.name && error && (
+              <p className="mt-1 text-xs text-red-400 font-mono">{error}</p>
             )}
           </div>
+        ))}
+      </div>
 
-          {editing === entry.name ? (
-            <AutoTextarea value={draft} onChange={setDraft} />
-          ) : (
-            <p className="text-xs font-mono text-zinc-300 whitespace-pre-wrap">{entry.content}</p>
-          )}
-
-          {editing === entry.name && error && (
-            <p className="mt-1 text-xs text-red-400 font-mono">{error}</p>
-          )}
-        </div>
-      ))}
-    </div>
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
+        title={`Delete shared context "${confirmDelete}"?`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => { if (confirmDelete) doDelete(confirmDelete); }}
+      />
+    </>
   );
 }

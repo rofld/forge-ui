@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import ShardIcon from '@/components/ui/ShardIcon';
 import InfinityIcon from '@/components/ui/InfinityIcon';
 import ThemePicker from '@/components/ui/ThemePicker';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from '@/components/ui/toaster';
 import { listThreads, listPools, listAgents, listTasks, deleteThread, createThread, renameThread, clearAuthToken } from '@/lib/api';
 import type { AgentRecord, TaskRecord } from '@/lib/api';
 import { isSessionActive } from '@/lib/sse-manager';
@@ -23,6 +25,15 @@ function useLocalStorage(key: string, defaultValue: boolean): [boolean, (v: bool
     localStorage.setItem(key, String(v));
   };
   return [value, set];
+}
+
+interface ConfirmState {
+  open: boolean;
+  title: string;
+  description?: string;
+  confirmLabel?: string;
+  destructive?: boolean;
+  onConfirm: () => void;
 }
 
 interface SidebarProps {
@@ -43,6 +54,19 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [creating, setCreating] = useState(false);
+  const [confirmState, setConfirmState] = useState<ConfirmState>({
+    open: false,
+    title: '',
+    onConfirm: () => {},
+  });
+
+  function openConfirm(opts: Omit<ConfirmState, 'open'>) {
+    setConfirmState({ ...opts, open: true });
+  }
+
+  function closeConfirm() {
+    setConfirmState((prev) => ({ ...prev, open: false }));
+  }
 
   const handleCreateThread = async () => {
     if (creating) return;
@@ -90,6 +114,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   }, []);
 
   return (
+    <>
     <aside className="w-56 min-h-screen glass border-r border-white/[0.06] flex flex-col shrink-0 animate-fade-in">
       {/* Logo + collapse */}
       <div className="flex items-center justify-between px-3 py-3">
@@ -205,24 +230,35 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`Delete thread "${t.id}"?`)) {
-                        const onDeleted = () => {
-                          setThreads((prev) => prev.filter((x) => x.id !== t.id));
-                          if (active) router.push('/');
-                        };
-                        deleteThread(t.id).then(onDeleted).catch((err) => {
-                          const msg = String(err?.message ?? err);
-                          if (msg.includes('locked by PID')) {
-                            if (confirm(`Thread is in use by an active agent. Force delete?`)) {
-                              deleteThread(t.id, true).then(onDeleted).catch((err2) => {
-                                alert(`Failed to delete thread: ${err2?.message ?? err2}`);
+                      const onDeleted = () => {
+                        setThreads((prev) => prev.filter((x) => x.id !== t.id));
+                        if (active) router.push('/');
+                      };
+                      openConfirm({
+                        title: `Delete thread "${t.id}"?`,
+                        confirmLabel: 'Delete',
+                        destructive: true,
+                        onConfirm: () => {
+                          deleteThread(t.id).then(onDeleted).catch((err) => {
+                            const msg = String(err?.message ?? err);
+                            if (msg.includes('locked by PID')) {
+                              openConfirm({
+                                title: 'Thread is in use by an active agent.',
+                                description: 'Force delete?',
+                                confirmLabel: 'Force Delete',
+                                destructive: true,
+                                onConfirm: () => {
+                                  deleteThread(t.id, true).then(onDeleted).catch((err2) => {
+                                    toast.error(`Failed to delete thread: ${err2?.message ?? err2}`);
+                                  });
+                                },
                               });
+                            } else {
+                              toast.error(`Failed to delete thread: ${msg}`);
                             }
-                          } else {
-                            alert(`Failed to delete thread: ${msg}`);
-                          }
-                        });
-                      }
+                          });
+                        },
+                      });
                     }}
                     className="hidden group-hover:flex shrink-0 w-5 h-5 items-center justify-center rounded hover:bg-red-500/20 text-stone-600 hover:text-red-400 transition-colors"
                     title="Delete thread"
@@ -393,5 +429,16 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
         </button>
       </div>
     </aside>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        onOpenChange={closeConfirm}
+        title={confirmState.title}
+        description={confirmState.description}
+        confirmLabel={confirmState.confirmLabel}
+        destructive={confirmState.destructive}
+        onConfirm={confirmState.onConfirm}
+      />
+    </>
   );
 }
