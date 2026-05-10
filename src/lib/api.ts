@@ -295,6 +295,35 @@ export async function linkAgentThread(agentId: string, threadId: string): Promis
   });
 }
 
+export interface UpdateAgentRequest {
+  model?: string;
+  /** String sets the persona, null clears it, omit for no-op. */
+  persona?: string | null;
+}
+
+/** PATCH /agents/:id — update agent model and/or persona. Returns the updated record. */
+export async function updateAgent(id: string, req: UpdateAgentRequest): Promise<AgentRecord> {
+  return apiFetch<AgentRecord>(`/agents/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(req),
+  });
+}
+
+export interface PauseAgentResponse {
+  status: 'paused' | 'active';
+  agent_id: string;
+}
+
+/** POST /agents/:id/pause — toggle the agent between paused and active. */
+export async function pauseAgent(id: string): Promise<PauseAgentResponse> {
+  return apiFetch<PauseAgentResponse>(`/agents/${id}/pause`, { method: 'POST' });
+}
+
+/** GET /agents/:id/tasks — list all tasks belonging to an agent. */
+export async function getAgentTasks(id: string): Promise<TaskRecord[]> {
+  return apiFetch<TaskRecord[]>(`/agents/${id}/tasks`);
+}
+
 // ── Tasks (Autonomous Fire-and-Forget) ───────────────────────────────
 
 export interface TaskRecord {
@@ -363,6 +392,48 @@ export async function steerThread(threadId: string, content: string): Promise<vo
     method: 'POST',
     body: JSON.stringify({ content }),
   });
+}
+
+// ── Dream ─────────────────────────────────────────────────────────────
+
+export interface DreamResponse {
+  status: 'dream_scheduled';
+  thread_id: string;
+}
+
+/**
+ * POST /threads/:id/dream — schedule a dream consolidation pass on the
+ * thread. The pass runs automatically on the next resume of that thread.
+ */
+export async function triggerDream(threadId: string): Promise<DreamResponse> {
+  return apiFetch<DreamResponse>(`/threads/${threadId}/dream`, { method: 'POST' });
+}
+
+// ── Knowledge ─────────────────────────────────────────────────────────
+
+export interface KnowledgeRecord {
+  record_type: string;
+  content: string;
+  tags: string[];
+}
+
+export interface KnowledgeSearchResponse {
+  records: KnowledgeRecord[];
+}
+
+/**
+ * GET /threads/:id/knowledge/search?q=term&limit=N — BM25 search over the
+ * thread's knowledge store. Returns up to `limit` records (default 10).
+ */
+export async function searchKnowledge(
+  threadId: string,
+  query: string,
+  limit = 10,
+): Promise<KnowledgeSearchResponse> {
+  const params = new URLSearchParams({ q: query, limit: String(limit) });
+  return apiFetch<KnowledgeSearchResponse>(
+    `/threads/${threadId}/knowledge/search?${params.toString()}`,
+  );
 }
 
 // ── Files ─────────────────────────────────────────────────────────────
