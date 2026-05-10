@@ -1,19 +1,19 @@
 // log-stream-pane.tsx — Live log viewer with ANSI colour rendering.
-// Renders up to 1000 lines as a scrollable list.
+// Virtualises the line list with react-window 2.x `List` (fixed 20 px row height).
 // Auto-scrolls to the bottom unless the user has scrolled up.
 // Keyboard: End → jump to bottom, Home → jump to top.
 //
-// Full react-window virtualisation is deferred — render up to 1000 lines as
-// a regular overflow-y-auto list which handles realistic agent log volumes.
+// Trade-off: fixed 20 px per row is accurate for single-line agent log entries.
+// Multi-line ANSI strings (rare in practice) are clipped to their first visual row
+// inside the virtualised window; callers should pre-split lines on `\n` if needed.
 'use client';
 
 import { useEffect, useRef, useCallback, KeyboardEvent } from 'react';
+import { List, useListRef, ListImperativeAPI } from 'react-window';
 
 // ── ANSI-to-HTML inline parser ──────────────────────────────────────────────
 // Handles the most common SGR codes used by terminal tools.
 // Unrecognised codes are stripped silently.
-
-const ANSI_RESET = '\x1b[0m';
 
 const SGR_TO_CLASS: Record<number, string> = {
   // Weights
@@ -94,12 +94,42 @@ function AnsiLine({ line }: { line: string }) {
   );
 }
 
+// ── Row height constant ──────────────────────────────────────────────────────
+// Fixed 20 px covers the `font-mono text-[12px] leading-relaxed` line height.
+// Adjust if the container font or line-height changes.
+const ROW_HEIGHT = 20;
+
+// ── LogRow — react-window 2.x rowComponent ──────────────────────────────────
+// react-window 2.x injects ariaAttributes/index/style automatically.
+// Extra data is passed via `rowProps` — must NOT overlap with the injected keys.
+
+interface LogRowExtraProps {
+  lines: string[];
+}
+
+type LogRowProps = {
+  ariaAttributes: { 'aria-posinset': number; 'aria-setsize': number; role: 'listitem' };
+  index: number;
+  style: React.CSSProperties;
+} & LogRowExtraProps;
+
+function LogRow({ ariaAttributes, index, style, lines }: LogRowProps) {
+  const line = lines[index] ?? '';
+  return (
+    <div
+      {...ariaAttributes}
+      style={style}
+      className="whitespace-pre-wrap break-all px-3"
+    >
+      <AnsiLine line={line} />
+    </div>
+  );
+}
+
 // ── LogStreamPane ──────────────────────────────────────────────────────────
 
-const MAX_LINES = 1000;
-
 interface LogStreamPaneProps {
-  /** Raw log lines to render. Caller is responsible for capping at MAX_LINES. */
+  /** Raw log lines to render. No length limit — virtualisation handles large counts. */
   lines: string[];
   /** Whether the SSE source is currently connected. */
   connected: boolean;
@@ -107,47 +137,64 @@ interface LogStreamPaneProps {
 }
 
 export function LogStreamPane({ lines, connected, className = '' }: LogStreamPaneProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  // useListRef is typed as typeof useRef<ListImperativeAPI>; pass null as initial value.
+  const listRef = useListRef(null);
   const pinnedToBottomRef = useRef(true);
 
-  // Render at most MAX_LINES lines
-  const visibleLines = lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines;
-
-  const scrollToBottom = useCallback(() => {
-    const el = containerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, []);
-
-  // Auto-scroll on new content only when pinned to bottom
+  // Auto-scroll to bottom when new lines arrive (if pinned)
   useEffect(() => {
-    if (pinnedToBottomRef.current) {
-      scrollToBottom();
+    if (pinnedToBottomRef.current && lines.length > 0) {
+      listRef.current?.scrollToRow({ index: lines.length - 1, align: 'end' });
     }
-  }, [visibleLines.length, scrollToBottom]);
+  }, [lines.length, listRef]);
 
-  const handleScroll = () => {
-    const el = containerRef.current;
-    if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 32;
-    pinnedToBottomRef.current = atBottom;
-  };
+  // Detect whether the user has scrolled away from the bottom
+  const handleScroll = useCallback(
+    (event: Event) => {
+      const el = event.currentTarget as HTMLElement;
+      if (!el) return;
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 32;
+      pinnedToBottomRef.current = atBottom;
+    },
+    [],
+  );
+
+  // Attach/detach native scroll listener on the outermost List element
+  const prevElRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    // listRef.current.element is available after first render
+    const el = listRef.current?.element ?? null;
+    if (el === prevElRef.current) return;
+    if (prevElRef.current) {
+      prevElRef.current.removeEventListener('scroll', handleScroll);
+    }
+    if (el) {
+      el.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    prevElRef.current = el;
+  });
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const el = containerRef.current;
-    if (!el) return;
     if (e.key === 'End') {
       e.preventDefault();
       pinnedToBottomRef.current = true;
-      scrollToBottom();
+      listRef.current?.scrollToRow({ index: lines.length - 1, align: 'end' });
     } else if (e.key === 'Home') {
       e.preventDefault();
       pinnedToBottomRef.current = false;
-      el.scrollTop = 0;
+      listRef.current?.scrollToRow({ index: 0, align: 'start' });
     }
   };
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
+    <div
+      className={`flex flex-col h-full ${className}`}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="log"
+      aria-live="polite"
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role
+    >
       {/* Connection status bar */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-white/[0.06] shrink-0">
         <span
@@ -156,37 +203,30 @@ export function LogStreamPane({ lines, connected, className = '' }: LogStreamPan
           }`}
         />
         <span className="text-[11px] font-mono text-stone-500">
-          {connected ? 'streaming' : 'disconnected'} · {visibleLines.length} lines
-          {lines.length > MAX_LINES && (
-            <span className="ml-1 text-amber-500/70">
-              (showing last {MAX_LINES} of {lines.length})
-            </span>
-          )}
+          {connected ? 'streaming' : 'disconnected'} · {lines.length} lines
         </span>
       </div>
 
       {/* Log content */}
-      <div
-        ref={containerRef}
-        role="log"
-        aria-live="polite"
-        tabIndex={0}
-        onScroll={handleScroll}
-        onKeyDown={handleKeyDown}
-        className="flex-1 overflow-y-auto font-mono text-[12px] leading-relaxed p-3 bg-black/30 rounded-b focus:outline-none focus:ring-1 focus:ring-violet-500/40"
-      >
-        {visibleLines.length === 0 ? (
-          <span className="text-stone-600 italic">
+      {lines.length === 0 ? (
+        <div className="flex-1 flex items-start p-3 bg-black/30 rounded-b">
+          <span className="text-stone-600 italic font-mono text-[12px]">
             {connected ? 'Waiting for log output…' : 'No logs yet.'}
           </span>
-        ) : (
-          visibleLines.map((line, i) => (
-            <div key={i} className="whitespace-pre-wrap break-all">
-              <AnsiLine line={line} />
-            </div>
-          ))
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="flex-1 bg-black/30 rounded-b overflow-hidden focus:outline-none focus:ring-1 focus:ring-violet-500/40">
+          <List<LogRowExtraProps>
+            listRef={listRef}
+            rowCount={lines.length}
+            rowHeight={ROW_HEIGHT}
+            rowComponent={LogRow}
+            rowProps={{ lines }}
+            className="font-mono text-[12px] leading-relaxed"
+            style={{ height: '100%', width: '100%' }}
+          />
+        </div>
+      )}
     </div>
   );
 }
