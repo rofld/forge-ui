@@ -10,6 +10,14 @@ import type {
 } from './types';
 import type { WBNode } from '@/components/whiteboard/types';
 
+// ── Auth types ────────────────────────────────────────────────────────
+
+export interface User {
+  id: string;
+  username: string;
+  created_at: number; // unix ms
+}
+
 const API_BASE =
   process.env.NEXT_PUBLIC_FORGE_API || 'http://localhost:3142';
 
@@ -33,6 +41,42 @@ export function isAuthenticated(): boolean {
 function authHeaders(): Record<string, string> {
   const token = getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/** POST /login — exchange credentials for a token + User. Throws on 401. */
+export async function login(
+  username: string,
+  password: string,
+): Promise<{ token: string; user: User }> {
+  const res = await fetch(`${API_BASE}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (res.status === 401) {
+    const body = await res.json().catch(() => ({ error: 'invalid credentials' }));
+    throw new Error(body.error ?? 'invalid credentials');
+  }
+  if (!res.ok) {
+    const body = await res.text().catch(() => res.statusText);
+    throw new Error(`${res.status} ${body}`);
+  }
+  return res.json() as Promise<{ token: string; user: User }>;
+}
+
+/** POST /logout — invalidate the current token server-side, then clear it locally. */
+export async function logout(): Promise<void> {
+  try {
+    await apiFetch<void>('/logout', { method: 'POST' });
+  } finally {
+    // Always clear locally, even if the server call fails.
+    clearAuthToken();
+  }
+}
+
+/** GET /me — fetch the authenticated user's profile. Throws on 401. */
+export async function getMe(): Promise<User> {
+  return apiFetch<User>('/me');
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

@@ -1,85 +1,100 @@
+// login/page.tsx — /login route: username + password sign-in form.
+// On success: sets token via AuthContext.signIn, then redirects to /.
+// On failure: shows a toast error message.
 'use client';
 
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { setAuthToken } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import { toast } from '@/components/ui/toaster';
 import ShardIcon from '@/components/ui/ShardIcon';
 
 export default function LoginPage() {
-  const [token, setToken] = useState('');
-  const [error, setError] = useState('');
+  const { signIn } = useAuth();
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
 
-    if (!token.trim()) {
-      setError('Token required');
+    if (!username.trim() || !password) {
+      toast.error('Username and password are required');
       return;
     }
 
-    // Test the token against the health-adjacent threads endpoint
+    setSubmitting(true);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_FORGE_API || 'http://localhost:3142';
-      const res = await fetch(`${API_BASE}/threads`, {
-        headers: { Authorization: `Bearer ${token.trim()}` },
-      });
-      if (res.status === 401) {
-        setError('Invalid token');
-        return;
-      }
-      if (!res.ok) {
-        setError(`Server error: ${res.status}`);
-        return;
-      }
-    } catch {
-      setError('Cannot reach server');
-      return;
+      await signIn(username.trim(), password);
+      router.push('/');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Sign in failed';
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
     }
-
-    setAuthToken(token.trim());
-    router.push('/');
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-6 px-6">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5 px-6">
+        {/* Header */}
         <div className="flex items-center justify-center gap-3 mb-8">
           <ShardIcon size={28} className="text-amber-500" />
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-            claw
+            Sign in
           </h1>
         </div>
 
+        {/* Username */}
         <div>
-          <label htmlFor="token" className="block text-sm text-stone-400 mb-2">
-            API Token
+          <label htmlFor="username" className="block text-sm text-stone-400 mb-2">
+            Username
           </label>
           <input
-            id="token"
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder="Enter your access token"
+            id="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="your-username"
+            autoComplete="username"
             autoFocus
-            className="w-full px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] text-foreground placeholder-stone-600 outline-none focus:border-amber-500/40 transition-colors"
+            disabled={submitting}
+            className="w-full px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] text-foreground placeholder-stone-600 outline-none focus:border-amber-500/40 transition-colors disabled:opacity-50"
           />
         </div>
 
-        {error && (
-          <p className="text-red-400 text-sm">{error}</p>
-        )}
+        {/* Password */}
+        <div>
+          <label htmlFor="password" className="block text-sm text-stone-400 mb-2">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            disabled={submitting}
+            className="w-full px-4 py-3 rounded-lg bg-white/[0.04] border border-white/[0.08] text-foreground placeholder-stone-600 outline-none focus:border-amber-500/40 transition-colors disabled:opacity-50"
+          />
+        </div>
 
+        {/* Submit */}
         <button
           type="submit"
-          className="w-full py-3 rounded-lg bg-amber-500/20 text-amber-300 font-medium hover:bg-amber-500/30 transition-colors border border-amber-500/20"
+          disabled={submitting}
+          className="w-full py-3 rounded-lg bg-amber-500/20 text-amber-300 font-medium hover:bg-amber-500/30 transition-colors border border-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Connect
+          {submitting ? 'Signing in…' : 'Sign in'}
         </button>
 
-        <p className="text-center text-stone-600 text-xs">
-          Token is stored locally and sent as Bearer auth
+        {/* Footer */}
+        <p className="text-center text-stone-600 text-xs pt-2">
+          Forge — internal access only
         </p>
       </form>
     </div>
