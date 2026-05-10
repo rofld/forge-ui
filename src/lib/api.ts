@@ -465,3 +465,125 @@ export async function saveWhiteboardContext(threadId: string, nodes: WBNode[]): 
     });
   }
 }
+
+// ── Dispatches (kanban-backed) ────────────────────────────────────────────────
+
+/// Sprint 35-W.2 + 35-W.3 — wrappers over forge-server's `/dispatches` routes.
+/// A "dispatch" is a kanban Task created from a GitHub issue (metadata.github_issue is set).
+/// The 7 statuses match forge-core's `kanban::TaskStatus` enum (snake_case wire format).
+
+export type DispatchStatus =
+  | 'triage'
+  | 'todo'
+  | 'ready'
+  | 'running'
+  | 'blocked'
+  | 'done'
+  | 'archived';
+
+/// Mirror of `forge_core::kanban::Task`. Wire format: snake_case JSON keys.
+export interface Dispatch {
+  id: string;
+  title: string;
+  body: string | null;
+  status: DispatchStatus;
+  priority: number;
+  assignee: string | null;
+  claim_lock: string | null;
+  claim_at: number | null;
+  created_at: number;
+  updated_at: number;
+  block_reason: string | null;
+  /** JSON-serialized; deserialize with JSON.parse() if non-null. */
+  metadata: string | null;
+}
+
+export interface DispatchAcceptance {
+  dispatch_id: string;
+  passed: boolean | null;
+  command: string | null;
+  output: string | null;
+  exit_code: number | null;
+}
+
+/// GET /dispatches — list all dispatch tasks (those with `metadata.github_issue` set).
+export async function listDispatches(): Promise<Dispatch[]> {
+  return apiFetch<Dispatch[]>('/dispatches');
+}
+
+/// GET /dispatches/{id} — single dispatch by ID.
+export async function getDispatch(id: string): Promise<Dispatch> {
+  return apiFetch<Dispatch>(`/dispatches/${id}`);
+}
+
+/// PATCH /dispatches/{id} — kanban drag-drop transition. Body: `{ status }`.
+/// Server enforces the legal-edge state machine.
+export async function patchDispatchStatus(
+  id: string,
+  status: DispatchStatus,
+): Promise<Dispatch> {
+  return apiFetch<Dispatch>(`/dispatches/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+/// GET /acceptance/{dispatch_id} — last-known acceptance result for a dispatch.
+/// 404 → null.
+export async function getDispatchAcceptance(
+  id: string,
+): Promise<DispatchAcceptance | null> {
+  try {
+    return await apiFetch<DispatchAcceptance>(`/acceptance/${id}`);
+  } catch (e) {
+    if (e instanceof Error && e.message.includes('404')) return null;
+    throw e;
+  }
+}
+
+/// EventSource URL for `/dispatches/{id}/stream` — UEP events for this task.
+/// Auth via query-param token (mirrors `taskStreamUrl`).
+export function dispatchStreamUrl(id: string): string {
+  const token = getAuthToken();
+  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+  return `${API_BASE}/dispatches/${id}/stream${tokenParam}`;
+}
+
+/// EventSource URL for `/agents/{id}/logs/stream` — per-agent live log tail.
+export function agentLogsStreamUrl(agentId: string): string {
+  const token = getAuthToken();
+  const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+  return `${API_BASE}/agents/${agentId}/logs/stream${tokenParam}`;
+}
+
+// ── POST /issues/:number/dispatch (used by DispatchForm) ──────────────────────
+
+export interface CreateDispatchRequest {
+  model: string;
+  persona?: string | null;
+  acceptance?: string | null;
+  max_iterations?: number;
+  worktree_dir?: string | null;
+}
+
+export async function createDispatch(
+  issueNumber: number,
+  req: CreateDispatchRequest,
+): Promise<Dispatch> {
+  return apiFetch<Dispatch>(`/issues/${issueNumber}/dispatch`, {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+}
+
+// ── Fleet ─────────────────────────────────────────────────────────────────────
+
+export interface FleetWorker {
+  worker_id: string;
+  task_id: string;
+  started_at: number;
+}
+
+export async function listFleetHeartbeats(): Promise<FleetWorker[]> {
+  return apiFetch<FleetWorker[]>('/fleet/heartbeats');
+}

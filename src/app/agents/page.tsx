@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { listAgents, createAgent, deleteAgent, getAgentStats } from '@/lib/api';
 import type { AgentRecord, AgentStats } from '@/lib/api';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 function StatusDot({ status }: { status: string }) {
   const color = {
@@ -22,6 +23,8 @@ function AgentCard({ agent, stats, onDelete, onClick }: {
   onDelete: () => void;
   onClick: () => void;
 }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
   return (
     <div onClick={onClick} className="glass border border-white/[0.06] rounded-xl p-5 space-y-3 hover:border-amber-500/20 transition-colors cursor-pointer">
       <div className="flex items-center justify-between">
@@ -30,8 +33,9 @@ function AgentCard({ agent, stats, onDelete, onClick }: {
           <h3 className="text-foreground font-medium text-[15px]">{agent.name}</h3>
         </div>
         <button
-          onClick={() => {
-            if (confirm(`Delete agent "${agent.name}"?`)) onDelete();
+          onClick={(e) => {
+            e.stopPropagation();
+            setConfirmOpen(true);
           }}
           className="text-stone-600 hover:text-red-400 transition-colors text-sm"
           title="Delete agent"
@@ -39,6 +43,15 @@ function AgentCard({ agent, stats, onDelete, onClick }: {
           ×
         </button>
       </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete agent?"
+        description={`Are you sure you want to delete agent "${agent.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={() => { onDelete(); setConfirmOpen(false); }}
+      />
+
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[12px]">
         <span className="text-stone-500">Owner</span>
