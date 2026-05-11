@@ -631,3 +631,55 @@ export interface FleetWorker {
 export async function listFleetHeartbeats(): Promise<FleetWorker[]> {
   return apiFetch<FleetWorker[]>('/fleet/heartbeats');
 }
+
+// ── Workspace explorer (thread-scoped) ──────────────────────────────────────
+
+export interface WorkspaceTreeResponse {
+  entries: { name: string; is_dir: boolean; size: number }[];
+  truncated?: boolean;
+  total?: number;
+}
+
+export interface WorkspaceFileResponse {
+  path: string;
+  content: string;
+  size: number;
+  mime_type: string;
+}
+
+/** GET /threads/{id}/workspace/tree — list directory in thread sandbox */
+export async function getWorkspaceTree(
+  threadId: string,
+  path: string = '/workspace',
+  maxEntries: number = 1000,
+): Promise<WorkspaceTreeResponse> {
+  const params = new URLSearchParams({ path, max_entries: String(maxEntries) });
+  return apiFetch<WorkspaceTreeResponse>(
+    `/threads/${threadId}/workspace/tree?${params.toString()}`,
+  );
+}
+
+/** GET /threads/{id}/workspace/file — read file from thread sandbox */
+export async function getWorkspaceFile(
+  threadId: string,
+  path: string,
+): Promise<WorkspaceFileResponse> {
+  const params = new URLSearchParams({ path });
+  return apiFetch<WorkspaceFileResponse>(
+    `/threads/${threadId}/workspace/file?${params.toString()}`,
+  );
+}
+
+/** GET /threads/{id}/workspace/download — download file from thread sandbox */
+export async function downloadWorkspaceFile(
+  threadId: string,
+  path: string,
+): Promise<Response> {
+  const params = new URLSearchParams({ path });
+  return fetch(
+    `${API_BASE}/threads/${threadId}/workspace/download?${params.toString()}`,
+    {
+      headers: authHeaders(),
+    },
+  );
+}
