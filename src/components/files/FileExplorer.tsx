@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import FolderIcon from '@/components/ui/FolderIcon';
 
-const API_BASE = process.env.NEXT_PUBLIC_FORGE_API || '${API_BASE}';
+const API_BASE = process.env.NEXT_PUBLIC_FORGE_API || 'http://localhost:3142';
 import { useCanvas } from '@/lib/canvas-context';
 
 interface FileEntry {
@@ -19,7 +19,11 @@ function fmtSize(s: number): string {
   return `${(s / 1048576).toFixed(1)}M`;
 }
 
-export default function FileExplorer() {
+interface FileExplorerProps {
+  threadId?: string;
+}
+
+export default function FileExplorer({ threadId }: FileExplorerProps = {}) {
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [filePath, setFilePath] = useState('/home/ubuntu/forge');
@@ -39,15 +43,23 @@ export default function FileExplorer() {
   const loadFiles = useCallback(async (dir: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/files/list?path=${encodeURIComponent(dir)}`);
+      // Use thread-scoped endpoint if threadId is available, otherwise fall back to host endpoint
+      const endpoint = threadId
+        ? `${API_BASE}/threads/${threadId}/workspace/tree?path=${encodeURIComponent(dir)}`
+        : `${API_BASE}/files/list?path=${encodeURIComponent(dir)}`;
+      const res = await fetch(endpoint);
       if (res.ok) {
         const data = await res.json();
         setFiles(data.entries ?? []);
         setFilePath(dir);
+      } else if (res.status === 503) {
+        // Sandbox idle — show empty with message
+        setFiles([]);
+        setFilePath(dir);
       }
     } catch { /* ignore */ }
     setLoading(false);
-  }, []);
+  }, [threadId]);
 
   const toggle = useCallback(() => {
     if (!open) {
@@ -74,7 +86,10 @@ export default function FileExplorer() {
   const downloadFile = useCallback(async (entry: FileEntry) => {
     if (entry.is_dir) return;
     try {
-      const res = await fetch(`${API_BASE}/files?path=${encodeURIComponent(`${filePath}/${entry.name}`)}`);
+      const endpoint = threadId
+        ? `${API_BASE}/threads/${threadId}/workspace/file?path=${encodeURIComponent(`${filePath}/${entry.name}`)}`
+        : `${API_BASE}/files?path=${encodeURIComponent(`${filePath}/${entry.name}`)}`;
+      const res = await fetch(endpoint);
       if (!res.ok) return;
       const data = await res.json();
       const blob = new Blob([data.content], { type: 'text/plain' });
@@ -85,7 +100,7 @@ export default function FileExplorer() {
       a.click();
       URL.revokeObjectURL(url);
     } catch { /* ignore */ }
-  }, [filePath]);
+  }, [filePath, threadId]);
 
   const shortPath = filePath.replace(workingDir || '/home/ubuntu/forge', '.') || '.';
 

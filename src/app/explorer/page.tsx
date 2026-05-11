@@ -25,10 +25,12 @@ export default function ExplorerPage() {
   const listRef = useRef<HTMLDivElement>(null);
   const { openFile, workingDir } = useCanvas();
 
+  const API_BASE = process.env.NEXT_PUBLIC_FORGE_API || 'http://localhost:3142';
+
   const loadFiles = useCallback(async (dir: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:3142/files/list?path=${encodeURIComponent(dir)}`);
+      const res = await fetch(`${API_BASE}/files/list?path=${encodeURIComponent(dir)}`);
       if (res.ok) {
         const data = await res.json();
         setFiles(data.entries ?? []);
@@ -37,7 +39,7 @@ export default function ExplorerPage() {
       }
     } catch { /* */ }
     setLoading(false);
-  }, []);
+  }, [API_BASE]);
 
   useEffect(() => {
     loadFiles(workingDir || '/home/ubuntu/forge');
@@ -58,7 +60,7 @@ export default function ExplorerPage() {
 
   const downloadFile = useCallback(async (entry: FileEntry) => {
     try {
-      const res = await fetch(`http://localhost:3142/files?path=${encodeURIComponent(`${filePath}/${entry.name}`)}`);
+      const res = await fetch(`${API_BASE}/files?path=${encodeURIComponent(`${filePath}/${entry.name}`)}`);
       if (!res.ok) return;
       const data = await res.json();
       const blob = new Blob([data.content], { type: 'text/plain' });
@@ -69,7 +71,7 @@ export default function ExplorerPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch { /* */ }
-  }, [filePath]);
+  }, [filePath, API_BASE]);
 
   // Keyboard navigation
   useEffect(() => {
