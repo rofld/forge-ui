@@ -1,0 +1,330 @@
+--- Sandbox Investigation Results ---
+Date: Mon May 11 12:40:58 EDT 2026
+
+=== Identity & Security Context ===
+
+> whoami && id
+ubuntu
+uid=1000(ubuntu) gid=1000(ubuntu) groups=1000(ubuntu)
+
+> cat /proc/self/status | grep -E 'Seccomp|Cap'
+CapInh:	0000000000000000
+CapPrm:	0000000000000000
+CapEff:	0000000000000000
+CapBnd:	000001ffffffffff
+CapAmb:	0000000000000000
+Seccomp:	0
+Seccomp_filters:	0
+
+> ls -la /proc/self/ns/
+total 0
+dr-x--x--x 2 ubuntu ubuntu 0 May 11 12:40 .
+dr-xr-xr-x 9 ubuntu ubuntu 0 May 11 12:40 ..
+lrwxrwxrwx 1 ubuntu ubuntu 0 May 11 12:40 cgroup -> cgroup:[4026531835]
+lrwxrwxrwx 1 ubuntu ubuntu 0 May 11 12:40 ipc -> ipc:[4026531839]
+lrwxrwxrwx 1 ubuntu ubuntu 0 May 11 12:40 mnt -> mnt:[4026531841]
+lrwxrwxrwx 1 ubuntu ubuntu 0 May 11 12:40 net -> net:[4026531840]
+lrwxrwxrwx 1 ubuntu ubuntu 0 May 11 12:40 pid -> pid:[4026531836]
+lrwxrwxrwx 1 ubuntu ubuntu 0 May 11 12:40 pid_for_children -> pid:[4026531836]
+lrwxrwxrwx 1 ubuntu ubuntu 0 May 11 12:40 time -> time:[4026531834]
+lrwxrwxrwx 1 ubuntu ubuntu 0 May 11 12:40 time_for_children -> time:[4026531834]
+lrwxrwxrwx 1 ubuntu ubuntu 0 May 11 12:40 user -> user:[4026531837]
+lrwxrwxrwx 1 ubuntu ubuntu 0 May 11 12:40 uts -> uts:[4026531838]
+
+> ps -p 1 -o comm=
+systemd
+
+=== Hardware ===
+
+> nproc
+6
+
+> lscpu | grep -E 'Model name|CPU\(s\)|Thread|Core'
+CPU(s):                               6
+On-line CPU(s) list:                  0-5
+Model name:                           Intel(R) Xeon(R) Processor @ 2.10GHz
+Thread(s) per core:                   2
+Core(s) per socket:                   3
+NUMA node0 CPU(s):                    0-5
+
+> free -h
+               total        used        free      shared  buff/cache   available
+Mem:           3.8Gi       868Mi       1.8Gi        11Mi       1.2Gi       2.6Gi
+Swap:          2.0Gi          0B       2.0Gi
+
+> df -h /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root        42G  9.5G   32G  24% /
+
+> ls /dev/nvidia* 2>/dev/null || echo 'no GPU'
+no GPU
+
+> ls /dev/vsock 2>/dev/null && echo 'vsock present' || echo 'no vsock'
+/dev/vsock
+vsock present
+
+=== Kernel & Virtualization ===
+
+> uname -a
+Linux f9afd797edb5 6.1.102 #1 SMP PREEMPT_DYNAMIC Tue Mar 25 09:02:46 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+> cat /proc/cpuinfo | grep -E 'hypervisor|vmx|svm' | head -5
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault invpcid_single ssbd ibrs ibpb stibp ibrs_enhanced fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 wbnoinvd arat avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm md_clear serialize tsxldtrk amx_bf16 avx512_fp16 amx_tile amx_int8 arch_capabilities
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault invpcid_single ssbd ibrs ibpb stibp ibrs_enhanced fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 wbnoinvd arat avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm md_clear serialize tsxldtrk amx_bf16 avx512_fp16 amx_tile amx_int8 arch_capabilities
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault invpcid_single ssbd ibrs ibpb stibp ibrs_enhanced fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 wbnoinvd arat avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm md_clear serialize tsxldtrk amx_bf16 avx512_fp16 amx_tile amx_int8 arch_capabilities
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault invpcid_single ssbd ibrs ibpb stibp ibrs_enhanced fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 wbnoinvd arat avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm md_clear serialize tsxldtrk amx_bf16 avx512_fp16 amx_tile amx_int8 arch_capabilities
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault invpcid_single ssbd ibrs ibpb stibp ibrs_enhanced fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 wbnoinvd arat avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm md_clear serialize tsxldtrk amx_bf16 avx512_fp16 amx_tile amx_int8 arch_capabilities
+
+> systemd-detect-virt
+docker
+
+=== Persistence & Uptime ===
+
+> uptime
+ 12:40:58 up  4:52, 21 users,  load average: 0.05, 0.01, 0.00
+
+> cat /proc/uptime
+17576.04 43815.00
+
+=== Filesystem & Mounts ===
+
+> ls -la /
+total 88
+drwxr-xr-x  19 root   root    4096 May 11 07:45 .
+drwxr-xr-x  19 root   root    4096 May 11 07:45 ..
+-rwxr-xr-x   1 root   root       0 May 11 07:45 .dockerenv
+-rw-r--r--   1 root   root      74 May 11 07:45 .e2b
+lrwxrwxrwx   1 root   root       7 Apr  9 22:21 bin -> usr/bin
+drwxr-xr-x   2 root   root    4096 Apr 18  2022 boot
+drwxr-xr-x  10 root   root    2660 May 11 07:48 dev
+-rwxr-xr-x   1 root   root      95 Apr 10 04:11 e2b-startup.sh
+drwxr-xr-x  78 root   root    4096 May 11 07:45 etc
+drwxr-xr-x   4 root   root    4096 May 11 07:45 home
+lrwxrwxrwx   1 root   root       7 Apr  9 22:21 lib -> usr/lib
+lrwxrwxrwx   1 root   root       9 Apr  9 22:21 lib32 -> usr/lib32
+lrwxrwxrwx   1 root   root       9 Apr  9 22:21 lib64 -> usr/lib64
+lrwxrwxrwx   1 root   root      10 Apr  9 22:21 libx32 -> usr/libx32
+drwx------   2 root   root    4096 Dec 31  1969 lost+found
+drwxr-xr-x   2 root   root    4096 Apr  9 22:21 media
+drwxr-xr-x   2 ubuntu ubuntu  4096 Apr  9 22:21 mnt
+drwxr-xr-x   3 root   root    4096 May 11 07:39 opt
+dr-xr-xr-x 270 root   root       0 May 11 07:48 proc
+drwx------   3 ubuntu ubuntu  4096 Apr 17 03:02 root
+drwxr-xr-x  14 root   root     420 May 11 07:48 run
+lrwxrwxrwx   1 root   root       8 Apr  9 22:21 sbin -> usr/sbin
+drwxr-xr-x   2 root   root    4096 Apr  9 22:21 srv
+-rwxr-xr-x   1 root   root   18176 May 11 07:39 startup.sh
+drwxr-xr-x   2 root   root    4096 May 11 07:45 swap
+dr-xr-xr-x  12 root   root       0 May 11 07:48 sys
+drwxrwxrwt  14 root   root    4096 May 11 12:40 tmp
+drwxr-xr-x  14 root   root    4096 May 11 01:56 usr
+drwxr-xr-x  11 root   root    4096 Apr  9 22:31 var
+
+> mount | grep -v 'tmpfs\|proc\|sysfs\|devpts\|debugfs\|mqueue\|hugetlbfs\|fusectl\|binfmt_misc'
+/dev/vda on / type ext4 (rw,relatime)
+cgroup2 on /sys/fs/cgroup type cgroup2 (rw,nosuid,nodev,noexec,relatime,nsdelegate,memory_recursiveprot)
+
+> ls -la /home/
+total 16
+drwxr-xr-x  4 root   root   4096 May 11 07:45 .
+drwxr-xr-x 19 root   root   4096 May 11 07:45 ..
+drwxr-x--- 13 ubuntu ubuntu 4096 May 11 12:40 ubuntu
+drwxrwxrwx  2 user   user   4096 May 11 07:45 user
+
+> ls -la /mnt
+total 8
+drwxr-xr-x  2 ubuntu ubuntu 4096 Apr  9 22:21 .
+drwxr-xr-x 19 root   root   4096 May 11 07:45 ..
+
+> ls -la /opt
+total 12
+drwxr-xr-x  3 root   root   4096 May 11 07:39 .
+drwxr-xr-x 19 root   root   4096 May 11 07:45 ..
+drwxr-xr-x  7 ubuntu ubuntu 4096 May 11 12:25 .manus
+
+=== Environment Variables (Redacted) ===
+
+> cat /proc/self/environ | tr ' ' '
+' | grep -iv 'key\|secret\|token\|pass\|auth\|cred' | sort
+AGENT_LOCALE=en
+AGENT_TIMEZONE=Europe/London
+APP_DOMAIN=manus.im,manus.ai
+APP_ENV=PROD
+CODE_SERVER_DOMAIN=us1.manus.computer
+DEPLOY_WASMER_OWNER=manus
+DISPLAY=:0
+HOME=/home/ubuntu
+LAST_COMMIT_HASH=7.2.22
+LC_CTYPE=C.UTF-8
+LESSCLOSE=/usr/bin/lesspipe %s %s
+LESSOPEN=| /usr/bin/lesspipe %s
+LOGNAME=ubuntu
+LS_COLORS=
+MAIL=/var/mail/ubuntu
+MALLOC_ARENA_MAX=2
+NEKO_USERNAME=neko
+NODE_OPTIONS=--max-old-space-size=3072
+NVM_BIN=/home/ubuntu/.nvm/versions/node/v22.13.0/bin
+NVM_CD_FLAGS=
+NVM_DIR=/home/ubuntu/.nvm
+NVM_INC=/home/ubuntu/.nvm/versions/node/v22.13.0/include/node
+OLDPWD=/home/ubuntu
+OPENAI_API_BASE=https://api.manus.im/api/llm-proxy/v1
+OPENAI_BASE_URL=https://api.manus.im/api/llm-proxy/v1
+OTEL_BSP_MAX_EXPORT_BATCH_SIZE=1024
+OTEL_BSP_SCHEDULE_DELAY=10000
+OTEL_EXPORTER_OTLP_ENDPOINT=https://http.butterflyotel.online
+OTEL_LOG_SAMPLE_RATE=0.01
+OTEL_PYTHON_LOG_CORRELATION=true
+OTEL_RESOURCE_ATTRIBUTES=service.name=sandbox-runtime,service.env=prod
+OTEL_SERVICE_NAME=sandbox-runtime
+OTEL_TRACES_EXPORTER=otlp
+OTEL_TRACES_SAMPLER_RATIO=0.01
+OTEL_TRACE_CUSTOM_SAMPLER_EXCLUDED_URLS=/healthz
+PATH=/home/ubuntu/.local/share/pnpm:/home/ubuntu/.nvm/versions/node/v22.13.0/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+PNPM_HOME=/home/ubuntu/.local/share/pnpm
+PWD=/home/ubuntu
+PW_TEST_SCREENSHOT_NO_FONTS_READY=1
+PYTHONIOENCODING=utf-8
+RUNTIME_API_HOST=https://api.manus.im
+SENTRY_DSN=https://962d173a894df4e4c23c744f8c39d6f3@sentry.butterflyotel.online/9
+SHELL=/bin/bash
+SHLVL=1
+SUDO_COMMAND=/usr/bin/su ubuntu
+SUDO_GID=1000
+SUDO_UID=1000
+SUDO_USER=ubuntu
+TERM=xterm-256color
+TZ=America/New_York
+USER=ubuntu
+_=/usr/bin/cat
+
+=== Network & Egress ===
+
+> cat /etc/hosts
+127.0.0.1	localhost
+::1	localhost ip6-localhost ip6-loopback
+fe00::	ip6-localnet
+ff00::	ip6-mcastprefix
+ff02::1	ip6-allnodes
+ff02::2	ip6-allrouters
+127.0.0.1 f9afd797edb5
+169.254.0.21 f9afd797edb5
+
+> cat /etc/resolv.conf
+nameserver 8.8.8.8
+
+> ip addr
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 02:fc:00:00:00:05 brd ff:ff:ff:ff:ff:ff
+    inet 169.254.0.21/30 brd 169.254.0.23 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::fc:ff:fe00:5/64 scope link 
+       valid_lft forever preferred_lft forever
+
+> curl -sv --max-time 3 https://google.com 2>&1 | grep -E '< HTTP|x-deny|blocked|403|200' | head -5
+< HTTP/2 301 
+< cache-control: public, max-age=2592000
+< alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+
+> curl -sv --max-time 3 https://pypi.org 2>&1 | grep '< HTTP' | head -3
+< HTTP/2 200 
+
+=== Software Inventory ===
+
+> which python3 python node npm cargo rustc ffmpeg pandoc libreoffice soffice wkhtmltopdf chromium google-chrome playwright 2>/dev/null
+/usr/bin/python3
+/usr/bin/python
+/home/ubuntu/.nvm/versions/node/v22.13.0/bin/node
+/home/ubuntu/.nvm/versions/node/v22.13.0/bin/npm
+/usr/bin/ffmpeg
+/usr/bin/libreoffice
+/usr/bin/soffice
+/usr/bin/chromium
+/usr/local/bin/playwright
+
+> python3 --version
+Python 3.11.0rc1
+
+> node --version
+v22.13.0
+
+> pip list --format=columns | head -40
+Using Python 3.11.0rc1 environment at: /usr
+Package               Version
+--------------------- -----------
+annotated-doc         0.0.4
+annotated-types       0.7.0
+anyio                 4.13.0
+arabic-reshaper       3.0.0
+asn1crypto            1.5.1
+beautifulsoup4        4.14.3
+blinker               1.9.0
+boto3                 1.42.90
+botocore              1.42.90
+brotli                1.2.0
+certifi               2026.2.25
+cffi                  2.0.0
+charset-normalizer    3.4.7
+click                 8.3.2
+contourpy             1.3.3
+cryptography          46.0.7
+cssselect2            0.9.0
+cycler                0.12.1
+defusedxml            0.7.1
+distro                1.9.0
+et-xmlfile            2.0.0
+fastapi               0.136.0
+flask                 3.1.3
+fonttools             4.62.1
+fpdf                  1.7.2
+fpdf2                 2.8.7
+git-remote-s3         0.3.2
+greenlet              3.4.0
+h11                   0.16.0
+html5lib              1.1
+httpcore              1.0.9
+httpx                 0.28.1
+idna                  3.11
+itsdangerous          2.2.0
+jinja2                3.1.6
+jiter                 0.14.0
+jmespath              1.1.0
+kiwisolver            1.5.0
+
+=== Cgroup Limits ===
+
+> cat /proc/self/cgroup
+0::/system.slice/e2b-bootup-cmd.scope
+
+> cat /sys/fs/cgroup/system.slice/e2b-bootup-cmd.scope/memory.max 2>/dev/null
+max
+
+> cat /sys/fs/cgroup/system.slice/e2b-bootup-cmd.scope/cpu.max 2>/dev/null
+max 100000
+
+=== Open Ports & Sockets ===
+
+> cat /proc/net/tcp | head -10
+  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode                                                     
+   0: 0100007F:2406 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 4673 1 0000000000000000 100 0 0 10 0                      
+   1: 0100007F:2472 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 424 1 0000000000000000 100 0 0 10 0                       
+   2: 3500007F:0035 00000000:0000 0A 00000000:00000000 00:00000000 00000000   104        0 1493 1 0000000000000000 100 0 0 10 5                      
+   3: 00000000:170C 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 1636 1 0000000000000000 100 0 0 10 0                      
+   4: 00000000:0016 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 3253 1 0000000000000000 100 0 0 10 0                      
+   5: 00000000:208A 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 1758 1 0000000000000000 100 0 0 10 0                      
+   6: 0100007F:209E 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 4649 2 0000000000000000 100 0 0 10 0                      
+   7: 0100007F:D9C6 0100007F:208A 06 00000000:00000000 03:000005F1 00000000     0        0 0 3 0000000000000000                                      
+   8: 1500FEA9:82A8 BCB7FB8E:146C 01 00000000:00000000 02:00000E6C 00000000  1000        0 30773 2 0000000000000000 20 4 27 10 -1                    
+
+> find /tmp /var/run /run -name '*.sock' 2>/dev/null | head -10
+/tmp/xf86-input-neko.sock
+/run/supervisor.sock
+
+--- Investigation Complete ---

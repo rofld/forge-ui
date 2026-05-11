@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { getThread, getMessages, uploadSharedContext, saveWhiteboardContext, steerThread } from '@/lib/api';
 import { shortModel, formatTokens, estimateCost, formatCost } from '@/lib/format';
 import { useSSE } from '@/lib/use-sse';
+import { onThreadRenamed } from '@/lib/sse-manager';
 import { useCanvas } from '@/lib/canvas-context';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -125,6 +126,16 @@ export default function ThreadPage({ params }: Props) {
     }
     load();
   }, [id, setMessages]);
+
+  // Listen for thread renames from SSE events
+  useEffect(() => {
+    const unsubscribe = onThreadRenamed((threadId, displayName) => {
+      if (threadId === id) {
+        setThread((prev) => prev ? { ...prev, display_name: displayName } : null);
+      }
+    });
+    return unsubscribe;
+  }, [id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
