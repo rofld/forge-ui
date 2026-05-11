@@ -23,6 +23,23 @@ export interface ActiveSession {
 
 const sessions = new Map<string, ActiveSession>();
 
+// Global thread rename listeners — called when ThreadRenamed SSE event arrives
+const threadRenameListeners: Array<(threadId: string, displayName: string) => void> = [];
+
+export function onThreadRenamed(callback: (threadId: string, displayName: string) => void): () => void {
+  threadRenameListeners.push(callback);
+  return () => {
+    const idx = threadRenameListeners.indexOf(callback);
+    if (idx >= 0) threadRenameListeners.splice(idx, 1);
+  };
+}
+
+function notifyThreadRenamed(threadId: string, displayName: string) {
+  threadRenameListeners.forEach((cb) => {
+    try { cb(threadId, displayName); } catch { /* */ }
+  });
+}
+
 export function getSession(threadId: string): ActiveSession | undefined {
   return sessions.get(threadId);
 }
@@ -267,6 +284,12 @@ async function runReader(
           } else if (event === 'error' || data.type === 'error') {
             session.error = (data as { message?: string }).message ?? 'Unknown error';
             notifyImmediate(session);
+
+          } else if (event === 'thread_renamed' || data.type === 'thread_renamed') {
+            const ev = data as { thread_id?: string; display_name?: string };
+            if (ev.thread_id && ev.display_name) {
+              notifyThreadRenamed(ev.thread_id, ev.display_name);
+            }
           }
         } else if (line === '') {
           currentEvent = 'message';

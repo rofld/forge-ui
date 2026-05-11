@@ -10,7 +10,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/toaster';
 import { listThreads, listPools, listAgents, listTasks, deleteThread, createThread, renameThread, clearAuthToken } from '@/lib/api';
 import type { AgentRecord, TaskRecord } from '@/lib/api';
-import { isSessionActive } from '@/lib/sse-manager';
+import { isSessionActive, onThreadRenamed } from '@/lib/sse-manager';
 import { shortModel } from '@/lib/format';
 import type { ThreadInfo, PoolInfo } from '@/lib/types';
 
@@ -111,6 +111,18 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   useEffect(() => {
     const interval = setInterval(() => forceUpdate((n) => n + 1), 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Listen for thread renames from SSE events
+  useEffect(() => {
+    const unsubscribe = onThreadRenamed((threadId, displayName) => {
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === threadId ? { ...t, display_name: displayName } : t
+        )
+      );
+    });
+    return unsubscribe;
   }, []);
 
   return (
@@ -223,7 +235,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
                         setEditValue(t.id);
                       }}
                     >
-                      {t.id}
+                      {t.display_name || t.id}
                     </Link>
                   )}
                   <span className="text-[10px] opacity-40 shrink-0 font-mono group-hover:hidden">{shortModel(t.model)}</span>

@@ -8,6 +8,7 @@ export interface ThreadInfo {
   total_operations: number;
   total_input_tokens: number;
   total_output_tokens: number;
+  display_name?: string;
 }
 
 export interface ArchiveInfo {
@@ -117,13 +118,20 @@ export interface SseTextDeltaEvent {
   text: string;
 }
 
+export interface SseThreadRenamedEvent {
+  type: 'thread_renamed';
+  thread_id: string;
+  display_name: string;
+}
+
 export type SseEventData =
   | SseStartEvent
   | SseAssistantEvent
   | SseToolEvent
   | SseDoneEvent
   | SseCompleteEvent
-  | SseTextDeltaEvent;
+  | SseTextDeltaEvent
+  | SseThreadRenamedEvent;
 
 export interface TokenStats {
   input_tokens: number;
