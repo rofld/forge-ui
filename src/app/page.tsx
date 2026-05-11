@@ -13,6 +13,7 @@ import Composer from '@/components/chat/Composer';
 import VerboseOutput from '@/components/chat/VerboseOutput';
 import ShardMenu from '@/components/chat/ShardMenu';
 import FileExplorer from '@/components/files/FileExplorer';
+import EmptyState from '@/components/EmptyState';
 import { useCanvas } from '@/lib/canvas-context';
 import { formatTokens, estimateCost, formatCost } from '@/lib/format';
 import type { Message } from '@/lib/types';
@@ -145,28 +146,7 @@ export default function LandingChat() {
         )}
 
         {ready && !hasMessages && (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="flex items-center gap-3 mb-8">
-              <ShardIcon size={44} className="text-amber-500/60" />
-              <span className="text-stone-600 text-2xl font-light">/</span>
-              <InfinityIcon size={38} className="text-amber-500/40" />
-            </div>
-            <p className="text-stone-200 text-xl font-light mb-2">
-              {getGreeting()}
-            </p>
-            <p className="text-stone-500 text-sm max-w-md leading-relaxed mb-10">
-              Endless context — conversations recycle into your knowledge base automatically
-            </p>
-
-            {/* Centered glass input for empty state */}
-            <div className="w-full max-w-2xl">
-              <ChatInput
-                onSend={(content, model, thinkingBudget, effort) => sendMessage(content, model, thinkingBudget, effort)}
-                disabled={isStreaming || !ready}
-                variant="glass"
-              />
-            </div>
-          </div>
+          <EmptyState projectId={null} />
         )}
 
         {hasMessages && (
