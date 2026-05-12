@@ -3,6 +3,7 @@
 import { useRef, useEffect, useCallback, useState, KeyboardEvent, ClipboardEvent } from 'react';
 import FilePickerDropdown from './FilePickerDropdown';
 import ModelControls, { ThinkingToggle, type ModelSettings } from './ModelControls';
+import ThreadSettings from './ThreadSettings';
 
 const MAX_SCREENSHOTS = 5;
 
@@ -11,9 +12,10 @@ interface ComposerProps {
   disabled: boolean;
   onClose: () => void;
   defaultModel?: string;
+  threadId?: string;
 }
 
-export default function Composer({ onSend, disabled, onClose, defaultModel = 'opus' }: ComposerProps) {
+export default function Composer({ onSend, disabled, onClose, defaultModel = 'opus', threadId }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const [showFilePicker, setShowFilePicker] = useState(false);
@@ -198,7 +200,10 @@ export default function Composer({ onSend, disabled, onClose, defaultModel = 'op
           )}
         </div>
         <div className="flex items-center justify-between px-4 pb-3 text-[11px] text-stone-500">
-          <ModelControls settings={modelSettings} onChange={setModelSettings} />
+          <div className="flex items-center gap-2">
+            <ModelControls settings={modelSettings} onChange={setModelSettings} />
+            {threadId && <ThreadSettings threadId={threadId} disabled={disabled} />}
+          </div>
           <div className="flex items-center gap-1">
             <ThinkingToggle settings={modelSettings} onChange={setModelSettings} />
             <button

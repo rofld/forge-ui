@@ -7,6 +7,7 @@ import type {
   PoolInfo,
   PoolDetail,
   CreateThreadOpts,
+  EgressPolicy,
 } from './types';
 import type { WBNode } from '@/components/whiteboard/types';
 
@@ -135,6 +136,13 @@ export async function renameThread(id: string, newId: string): Promise<ThreadInf
   return apiFetch<ThreadInfo>(`/threads/${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ id: newId }),
+  });
+}
+
+export async function patchThreadEgress(id: string, egress: EgressPolicy): Promise<ThreadInfo> {
+  return apiFetch<ThreadInfo>(`/threads/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ egress }),
   });
 }
 
