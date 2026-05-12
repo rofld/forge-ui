@@ -3,6 +3,7 @@
 import { useRef, useState, KeyboardEvent, useCallback, ClipboardEvent } from 'react';
 import FilePickerDropdown from './FilePickerDropdown';
 import ModelControls, { ThinkingToggle, type ModelSettings } from './ModelControls';
+import ThreadSettings from './ThreadSettings';
 
 const MAX_SCREENSHOTS = 5;
 
@@ -11,6 +12,7 @@ interface ChatInputProps {
   disabled?: boolean;
   variant?: 'default' | 'glass';
   defaultModel?: string;
+  threadId?: string;
 }
 
 export default function ChatInput({
@@ -18,6 +20,7 @@ export default function ChatInput({
   disabled = false,
   variant = 'default',
   defaultModel = 'opus',
+  threadId,
 }: ChatInputProps) {
   const [modelSettings, setModelSettings] = useState<ModelSettings>({
     model: defaultModel,
@@ -212,9 +215,10 @@ export default function ChatInput({
               </svg>
             </button>
           </div>
-          {/* Model selector */}
-          <div className="flex items-center mt-1 -mb-1">
+          {/* Model and network policy selectors */}
+          <div className="flex items-center gap-2 mt-1 -mb-1">
             <ModelControls settings={modelSettings} onChange={setModelSettings} />
+            {threadId && <ThreadSettings threadId={threadId} disabled={disabled} />}
           </div>
         </div>
 

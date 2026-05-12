@@ -323,6 +323,7 @@ export default function ThreadPage({ params }: Props) {
                   disabled={isStreaming}
                   onClose={() => setComposerOpen(false)}
                   defaultModel={thread?.model ? thread.model.replace(/^claude-/, '').split('-')[0] : 'opus'}
+                  threadId={id}
                 />
               )}
             </>
@@ -333,6 +334,7 @@ export default function ThreadPage({ params }: Props) {
                 disabled={isStreaming}
                 variant="glass"
                 defaultModel={thread?.model ? thread.model.replace(/^claude-/, '').split('-')[0] : 'opus'}
+                threadId={id}
               />
             </div>
           )}

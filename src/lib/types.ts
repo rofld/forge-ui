@@ -138,3 +138,20 @@ export interface TokenStats {
   output_tokens: number;
   cache_read_tokens: number;
 }
+
+// ── Network Policy ───────────────────────────────────────────────────
+
+export interface EgressPolicyOff {
+  kind: 'off';
+}
+
+export interface EgressPolicyAllowlist {
+  kind: 'allowlist';
+  hosts: string[];
+}
+
+export interface EgressPolicyOpen {
+  kind: 'open';
+}
+
+export type EgressPolicy = EgressPolicyOff | EgressPolicyAllowlist | EgressPolicyOpen;
